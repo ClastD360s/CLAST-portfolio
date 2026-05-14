@@ -167,29 +167,34 @@ export default function App() {
         camera={{ position: [0, 0, 5], fov: 40 }}
         gl={{ antialias: true }}
       >
+        <color attach="background" args={['#0d0d0e']} />
         <fog attach="fog" args={['#0d0d0e', 6, 22]} />
-        <LiquidBackground />
-        <Stars radius={60} depth={50} count={350} factor={1.6} fade speed={0.4} />
-        <Environment preset="city" />
-
         <Suspense fallback={null}>
-          <ScrollControls pages={6} damping={0.18}>
-            <PresentationDirector
-              presenting={presenting}
-              onDone={() => setPresenting(false)}
-            />
-            <SceneStack onSelectProject={setSelected} />
-
-            {/* Capa HTML alineada al scroll */}
-            <Scroll html style={{ width: '100%' }}>
-              <HtmlContent
-                projects={projects}
-                onSelect={setSelected}
-                onSendContact={() => {}}
-              />
-            </Scroll>
-          </ScrollControls>
+          <LiquidBackground />
         </Suspense>
+        <Stars radius={60} depth={50} count={350} factor={1.6} fade speed={0.4} />
+        <Suspense fallback={null}>
+          <Environment preset="city" />
+        </Suspense>
+
+        <ScrollControls pages={6} damping={0.18}>
+          <PresentationDirector
+            presenting={presenting}
+            onDone={() => setPresenting(false)}
+          />
+          <Suspense fallback={null}>
+            <SceneStack onSelectProject={setSelected} />
+          </Suspense>
+
+          {/* Capa HTML — fuera del Suspense de 3D para que SIEMPRE se vea */}
+          <Scroll html style={{ width: '100%' }}>
+            <HtmlContent
+              projects={projects}
+              onSelect={setSelected}
+              onSendContact={() => {}}
+            />
+          </Scroll>
+        </ScrollControls>
       </Canvas>
 
       {/* Modal de proyecto */}
