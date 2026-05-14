@@ -172,10 +172,18 @@ export default function App() {
           <LiquidBackground />
         </Suspense>
         <Stars radius={60} depth={50} count={350} factor={1.6} fade speed={0.4} />
-        {/* Environment provee el HDRI que da los reflejos metálicos. Sin
-            suspense propio para que los modelos no se vean oscuros mientras
-            carga; usa cached del CDN de drei tras el primer hit. */}
-        <Environment preset="city" />
+
+        {/* Luz base SIEMPRE presente — los modelos nunca quedan a oscuras */}
+        <ambientLight intensity={0.55} />
+        <hemisphereLight args={['#ffffff', '#202020', 0.5]} />
+        <directionalLight position={[4, 5, 3]} intensity={1.4} color="#ffe7b8" />
+        <directionalLight position={[-4, -2, 2]} intensity={0.6} color="#7ec0ff" />
+
+        {/* HDRI: añade los reflejos metálicos cuando termina de cargar.
+            Dentro de un Suspense para no crashear si tarda. */}
+        <Suspense fallback={null}>
+          <Environment preset="city" />
+        </Suspense>
 
         <ScrollControls pages={6} damping={0.18}>
           <PresentationDirector
