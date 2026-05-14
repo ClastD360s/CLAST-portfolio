@@ -121,7 +121,7 @@ function GlassShell({ shape }) {
   );
 }
 
-export default function AboutScene({ scrollOffset = 0 }) {
+export default function AboutScene() {
   const groupRef = useRef();      // rotación (auto + drag)
   const breatheRef = useRef();    // respiración
   const morphRef = useRef();      // squash de click (bounce)

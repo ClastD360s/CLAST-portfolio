@@ -13,48 +13,21 @@ import { projects } from './data/projects.js';
 
 /**
  * Coordina las escenas con el progreso de scroll global.
- * Cada escena recibe un `scrollOffset` 0..1 propio según su tramo de páginas.
+ * Cada escena lee el scroll INTERNAMENTE vía useScroll() — sin React state
+ * por frame. Antes hacíamos setState() en un RAF loop, lo que disparaba un
+ * re-render del árbol entero a 60fps y, después de un rato, hacía que
+ * WebGL perdiera el contexto y la página se quedara en negro.
  */
 function SceneStack({ onSelectProject }) {
-  const scroll = useScroll();
-  const [offsets, setOffsets] = React.useState({ hero: 0, about: 0, gallery: 0, contact: 0 });
-
-  // Posicionamos cada escena en X distintos para que se vean en su "página"
-  // Cada página = 1/pages del scroll total. Definimos 4 páginas = 4 secciones.
-  // Cuando el scroll llega a su tramo, esa escena pasa al frente (entra en cuadro).
-  // Para mantenerlo simple, todas viven en (0,0,0) y movemos la cámara con scroll.
-
-  // Calculamos offsets en cada frame mediante useFrame del propio ScrollControls
-  // ... pero como cada Scene tiene su useFrame, basta con leer scroll.offset y
-  // pasarlo. Lo hacemos vía un componente hijo que lee scroll y propaga estado.
-
-  React.useEffect(() => {
-    let raf;
-    const tick = () => {
-      const o = scroll.offset; // 0..1
-      setOffsets({
-        hero: Math.max(0, Math.min(1, o * 6 - 0)),
-        about: Math.max(0, Math.min(1, o * 6 - 1)),
-        skills: Math.max(0, Math.min(1, o * 6 - 2)),
-        gallery: Math.max(0, Math.min(1, o * 6 - 3)),
-        contact: Math.max(0, Math.min(1, o * 6 - 4)),
-      });
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [scroll]);
-
   return (
     <>
-      {/* Cada escena posicionada en su "X" para que la cámara las recorra */}
       <group position={[0, 0, 0]}>
-        <HeroScene scrollOffset={offsets.hero} />
+        <HeroScene />
       </group>
       <group position={[8, 0, 0]}>
-        <AboutScene scrollOffset={offsets.about} />
+        <AboutScene />
       </group>
-      {/* x=16 reservado para galería HTML sin 3D (cubos eliminados) */}
+      {/* x=16 reservado para galería HTML sin 3D */}
       <group position={[24, 0, 0]}>
         <ContactScene />
       </group>

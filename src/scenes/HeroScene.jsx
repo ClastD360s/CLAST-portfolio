@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, Suspense } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Float, Center, Sparkles, useGLTF } from '@react-three/drei';
+import { Float, Center, Sparkles, useGLTF, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Precarga: arranca la descarga apenas se monta el módulo
@@ -55,7 +55,8 @@ function ClastLogo3D({ groupRef }) {
  * Hero 3D — logo CLAST cargado desde base.obj, con un SpotLight
  * que orbita en automático Y reacciona al mouse (seguimiento del cursor).
  */
-export default function HeroScene({ scrollOffset = 0 }) {
+export default function HeroScene() {
+  const scroll = useScroll();
   const logoRef = useRef();
   const spotRef = useRef();
   const targetRef = useRef();
@@ -63,6 +64,8 @@ export default function HeroScene({ scrollOffset = 0 }) {
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
+    // Lee el scroll directamente sin causar re-render de React
+    const scrollOffset = Math.max(0, Math.min(1, (scroll?.offset ?? 0) * 6));
 
     // Spot orbita lentamente + reacciona al mouse
     if (spotRef.current && targetRef.current) {
