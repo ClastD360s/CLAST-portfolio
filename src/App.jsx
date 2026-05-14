@@ -167,15 +167,15 @@ export default function App() {
         camera={{ position: [0, 0, 5], fov: 40 }}
         gl={{ antialias: true }}
       >
-        <color attach="background" args={['#0d0d0e']} />
         <fog attach="fog" args={['#0d0d0e', 6, 22]} />
         <Suspense fallback={null}>
           <LiquidBackground />
         </Suspense>
         <Stars radius={60} depth={50} count={350} factor={1.6} fade speed={0.4} />
-        <Suspense fallback={null}>
-          <Environment preset="city" />
-        </Suspense>
+        {/* Environment provee el HDRI que da los reflejos metálicos. Sin
+            suspense propio para que los modelos no se vean oscuros mientras
+            carga; usa cached del CDN de drei tras el primer hit. */}
+        <Environment preset="city" />
 
         <ScrollControls pages={6} damping={0.18}>
           <PresentationDirector
