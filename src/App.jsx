@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll, Environment, Stars } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,11 +33,11 @@ function SceneStack({ onSelectProject }) {
     const tick = () => {
       const o = scroll.offset; // 0..1
       setOffsets({
-        hero: Math.max(0, Math.min(1, o * 5 - 0)),
-        about: Math.max(0, Math.min(1, o * 5 - 1)),
-        skills: Math.max(0, Math.min(1, o * 5 - 2)),
-        gallery: Math.max(0, Math.min(1, o * 5 - 3)),
-        contact: Math.max(0, Math.min(1, o * 5 - 4)),
+        hero: Math.max(0, Math.min(1, o * 6 - 0)),
+        about: Math.max(0, Math.min(1, o * 6 - 1)),
+        skills: Math.max(0, Math.min(1, o * 6 - 2)),
+        gallery: Math.max(0, Math.min(1, o * 6 - 3)),
+        contact: Math.max(0, Math.min(1, o * 6 - 4)),
       });
       raf = requestAnimationFrame(tick);
     };
@@ -75,8 +75,9 @@ function CameraScroller() {
     let raf;
     const tick = () => {
       const o = scroll.offset;
-      // 4 escenas en x = 0, 8, 16, 24 → cámara va de 0 a 24
-      const targetX = o * 24;
+      // Escenas en x = 0..24. La cámara llega a 24 cuando termina la sección
+      // de Contacto (scroll 5/6) y se queda ahí durante el footer.
+      const targetX = Math.min(o * 6 / 5, 1) * 24;
       threeCam.position.x += (targetX - threeCam.position.x) * 0.12;
       threeCam.lookAt(threeCam.position.x, 0, 0);
       raf = requestAnimationFrame(tick);
@@ -88,13 +89,78 @@ function CameraScroller() {
   return null;
 }
 
+/**
+ * Modo presentación: scroll automático del top al bottom con ease-in-out
+ * de seno, durante TOUR_DURATION_MS. Útil para grabar un demo video.
+ */
+const TOUR_DURATION_MS = 90000;
+
+function PresentationDirector({ presenting, onDone }) {
+  const scroll = useScroll();
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (!presenting || !scroll?.el) return;
+    const start = performance.now();
+    const max = scroll.el.scrollHeight - scroll.el.clientHeight;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / TOUR_DURATION_MS);
+      // Ease in/out con curva senoidal — cámara cinematográfica
+      const eased = 0.5 - 0.5 * Math.cos(t * Math.PI);
+      scroll.el.scrollTop = max * eased;
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        onDone?.();
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [presenting, scroll, onDone]);
+
+  return null;
+}
+
 export default function App() {
   const [selected, setSelected] = useState(null);
+  const [presenting, setPresenting] = useState(false);
+
+  // Permite arrancar el tour vía ?present=1 en la URL (útil para grabar)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('present') === '1') {
+      // pequeño delay para que se cargue todo antes de empezar
+      const timer = setTimeout(() => setPresenting(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   return (
     <div className="relative w-screen h-screen bg-bg text-ink overflow-hidden">
       <Nav />
       <AudioPlayer src="/assets/huella.mp3" volume={0.45} />
+
+      {/* Botón "modo presentación" — esquina inferior izquierda */}
+      <button
+        onClick={() => setPresenting((p) => !p)}
+        title={presenting ? 'Detener presentación' : 'Reproducir presentación (90s)'}
+        className="fixed bottom-6 left-6 z-[60] inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-full border border-ink/30 bg-bg/60 backdrop-blur-md hover:bg-ink hover:text-bg transition-colors text-[12px] font-mono uppercase tracking-widest"
+      >
+        {presenting ? (
+          <>
+            <span className="block w-3 h-3 bg-current" /> Stop
+          </>
+        ) : (
+          <>
+            <svg viewBox="0 0 12 12" width="12" height="12" fill="currentColor" aria-hidden="true">
+              <path d="M2 1 L11 6 L2 11 Z" />
+            </svg>
+            Tour
+          </>
+        )}
+      </button>
 
       <Canvas
         shadows
@@ -107,7 +173,11 @@ export default function App() {
         <Environment preset="city" />
 
         <Suspense fallback={null}>
-          <ScrollControls pages={5} damping={0.18}>
+          <ScrollControls pages={6} damping={0.18}>
+            <PresentationDirector
+              presenting={presenting}
+              onDone={() => setPresenting(false)}
+            />
             <SceneStack onSelectProject={setSelected} />
 
             {/* Capa HTML alineada al scroll */}
@@ -133,36 +203,67 @@ export default function App() {
             onClick={() => setSelected(null)}
           >
             <motion.div
-              className="max-w-lg w-full bg-bg border border-ink/15 rounded-2xl p-8"
+              className="max-w-3xl w-full bg-bg border border-ink/15 rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto shadow-2xl shadow-black/50"
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 30, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-mute font-mono text-[11px] tracking-widest uppercase mb-3">
-                {selected.role} · {selected.year}
-              </div>
-              <h3 className="font-display text-3xl md:text-4xl font-medium mb-4">
-                {selected.title}
-              </h3>
-              <p className="text-mute leading-relaxed mb-6">{selected.description}</p>
-              <div className="flex gap-3">
-                {selected.href && selected.href !== '#' && (
-                  <a
-                    href={selected.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block bg-ink text-bg px-5 py-3 rounded-full text-sm font-medium"
+              {selected.image && (
+                <div className="relative w-full bg-black overflow-hidden">
+                  <img
+                    src={selected.image}
+                    alt={selected.title}
+                    className="block w-full h-auto"
+                    onError={(e) => {
+                      e.currentTarget.parentElement.style.display = 'none';
+                    }}
+                  />
+                  {/* Sutil viñeta inferior con el color del proyecto para fundir con el contenido */}
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
+                    style={{
+                      background: `linear-gradient(180deg, transparent 0%, ${selected.color}40 60%, #0d0d0e 100%)`,
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="p-8 md:p-10">
+                <div className="flex items-center gap-3 mb-3">
+                  <span
+                    className="w-2 h-2 rounded-full inline-block"
+                    style={{ background: selected.color }}
+                  />
+                  <div className="text-mute font-mono text-[11px] tracking-widest uppercase">
+                    {selected.role} · {selected.year}
+                  </div>
+                </div>
+                <h3 className="font-display text-3xl md:text-5xl font-medium tracking-tight mb-5">
+                  {selected.title}
+                </h3>
+                <p className="text-mute text-base md:text-lg leading-relaxed mb-8 max-w-2xl">
+                  {selected.description}
+                </p>
+                <div className="flex gap-3 flex-wrap">
+                  {selected.href && selected.href !== '#' && (
+                    <a
+                      href={selected.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block bg-ink text-bg px-6 py-3 rounded-full text-sm font-medium hover:bg-accent transition-colors"
+                    >
+                      Ver proyecto →
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="inline-block border border-ink/30 hover:border-ink/60 px-6 py-3 rounded-full text-sm transition-colors"
                   >
-                    Ver proyecto →
-                  </a>
-                )}
-                <button
-                  onClick={() => setSelected(null)}
-                  className="inline-block border border-ink/30 px-5 py-3 rounded-full text-sm"
-                >
-                  Cerrar
-                </button>
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -180,11 +281,7 @@ function HtmlContent({ projects, onSelect, onSendContact }) {
       {/* Hero — el logo 3D vive en el Canvas; aquí solo el copy */}
       <section id="hero" className="min-h-screen flex items-end pb-24 px-6 md:px-16">
         <div className="max-w-[1360px] mx-auto w-full">
-          <span className="inline-flex items-center gap-2 text-mute font-mono text-[11px] tracking-widest uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            Portafolio · 2026
-          </span>
-          <h1 className="mt-6 font-display text-[clamp(48px,10vw,160px)] leading-[0.94] tracking-tight">
+          <h1 className="font-display text-[clamp(48px,10vw,160px)] leading-[0.94] tracking-tight">
             Diseño que <em className="font-serif italic font-normal">suena</em><br />
             y <em className="font-serif italic font-normal">se ve</em>.
           </h1>
@@ -316,19 +413,19 @@ function HtmlContent({ projects, onSelect, onSendContact }) {
       </section>
 
       {/* Contact */}
-      <section id="contact" className="min-h-screen flex items-center px-6 md:px-16 py-24">
-        <div className="max-w-[1360px] mx-auto w-full grid md:grid-cols-2 gap-12 items-center">
+      <section id="contact" className="min-h-screen flex items-start px-6 md:px-16 pt-28 pb-16">
+        <div className="max-w-[1360px] mx-auto w-full grid md:grid-cols-2 gap-12 items-start">
           <div>
             <div className="text-mute font-mono text-[11px] tracking-widest uppercase">
               Contacto
             </div>
-            <h2 className="mt-4 font-display text-[clamp(36px,6vw,72px)] leading-tight tracking-tight">
+            <h2 className="mt-3 font-display text-[clamp(36px,6vw,72px)] leading-tight tracking-tight">
               Empezá tu proyecto.
             </h2>
-            <p className="mt-6 text-mute">djclastcol@gmail.com · WhatsApp +57 324 437 8544</p>
+            <p className="mt-4 text-mute">djclastcol@gmail.com · WhatsApp +57 324 437 8544</p>
 
             <form
-              className="mt-10 grid gap-4 max-w-md"
+              className="mt-6 grid gap-3 max-w-md"
               onSubmit={(e) => {
                 e.preventDefault();
                 onSendContact();
@@ -339,23 +436,23 @@ function HtmlContent({ projects, onSelect, onSendContact }) {
                 type="text"
                 required
                 placeholder="Tu nombre"
-                className="w-full bg-transparent border-b border-ink/30 py-3 text-ink placeholder:text-mute focus:outline-none focus:border-ink transition-colors"
+                className="w-full bg-transparent border-b border-ink/30 py-2.5 text-ink placeholder:text-mute focus:outline-none focus:border-ink transition-colors"
               />
               <input
                 type="email"
                 required
                 placeholder="Tu correo"
-                className="w-full bg-transparent border-b border-ink/30 py-3 text-ink placeholder:text-mute focus:outline-none focus:border-ink transition-colors"
+                className="w-full bg-transparent border-b border-ink/30 py-2.5 text-ink placeholder:text-mute focus:outline-none focus:border-ink transition-colors"
               />
               <textarea
                 required
-                rows={3}
+                rows={2}
                 placeholder="Contame del proyecto"
-                className="w-full bg-transparent border-b border-ink/30 py-3 text-ink placeholder:text-mute focus:outline-none focus:border-ink transition-colors resize-none"
+                className="w-full bg-transparent border-b border-ink/30 py-2.5 text-ink placeholder:text-mute focus:outline-none focus:border-ink transition-colors resize-none"
               />
               <button
                 type="submit"
-                className="mt-4 bg-ink text-bg px-6 py-3 rounded-full text-sm font-medium hover:bg-accent transition-colors"
+                className="mt-3 w-full bg-ink text-bg px-6 py-3 rounded-full text-sm font-medium hover:bg-accent transition-colors"
               >
                 Enviar mensaje →
               </button>
@@ -376,7 +473,7 @@ function HtmlContent({ projects, onSelect, onSendContact }) {
 function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative px-6 md:px-16 pt-20 pb-10 border-t border-ink/10">
+    <footer className="relative px-6 md:px-16 pt-20 pb-24 border-t border-ink/10">
       <div className="max-w-[1360px] mx-auto">
         {/* Wordmark */}
         <div className="flex items-end justify-between gap-8 flex-wrap mb-14">
