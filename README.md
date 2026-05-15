@@ -34,55 +34,21 @@ src/
 3. **Click de selección** → click en un cubo abre modal con detalles del proyecto.
 4. **Scroll-linked animation** → la cámara viaja horizontalmente entre las 4 escenas mientras hacés scroll vertical en el HTML, vía `<ScrollControls>` de Drei.
 
-## Correr en local
-
-```bash
-npm install
-npm run dev
-```
-
-Abre [http://localhost:5173](http://localhost:5173).
-
 ## Build de producción
 
 ```bash
 npm run build
 npm run preview
 ```
-
-## Despliegue en Vercel
-
-1. Subí este repo a GitHub.
-2. En [vercel.com](https://vercel.com) → New Project → import del repo.
-3. Vercel detecta Vite automáticamente. Build command: `npm run build`. Output: `dist`.
-4. Deploy.
-
-## Assets optimizados
-
-Todo el contenido pesado está pre-comprimido para Vercel:
-
-| Archivo | Formato | Tamaño |
-|---|---|---|
-| `public/models/base.glb` | GLB + Draco | 872 KB |
-| `public/models/contact.glb` | GLB + Draco | 1.2 MB |
-| `public/assets/huella.mp3` | MP3 192 kbps | 6.9 MB |
-| `public/assets/profile.jpg` | JPG q4 | 28 KB |
-| `public/assets/clast-logo.svg` | SVGO multipass | 4 KB |
-
-Si reemplazás algún asset:
-
-- **OBJ → GLB+Draco**: `npx obj2gltf -i in.obj -o tmp.glb --binary && npx gltf-pipeline -i tmp.glb -o out.glb --draco.compressionLevel=10`
-- **WAV → MP3**: `ffmpeg -i in.wav -b:a 192k out.mp3`
-- **PNG → JPG**: `ffmpeg -i in.png -q:v 4 out.jpg`
-- **SVG**: `npx svgo file.svg --multipass`
-
-## TODO
-
-- [ ] Cambiar imágenes/colores de `src/data/projects.js` por los proyectos reales.
-- [ ] Refinar bio en `src/App.jsx` (sección "Sobre mí").
-- [ ] Agregar capturas al README.
-
 ## Créditos
 
 Logo y assets visuales: © CLAST 2026.
 Inspiración 3D: ejemplo `webgl_lights_spotlight` de three.js.
+
+<img width="1916" height="895" alt="image" src="https://github.com/user-attachments/assets/2a8b8fe3-5944-42a5-be55-b1a19d6a3e9d" />
+
+<img width="1918" height="904" alt="image" src="https://github.com/user-attachments/assets/c75dc715-f8f4-4d01-881c-f24a6ed93572" />
+
+<img width="1902" height="903" alt="image" src="https://github.com/user-attachments/assets/fb34b387-970c-46c7-9dc2-80fd49d3b958" />
+
+
